@@ -97,21 +97,6 @@ if ($doSystemInfo) {
     [int]$minor = $versionObj.Minor
     $fullBuild = "$major.$minor.$buildMajor.$buildRevision"
     $buildMap = @{
-        # Windows 10
-        10240 = 'Windows 10 Version 1507 (RTM)'
-        10586 = 'Windows 10 Version 1511 (November Update)'
-        14393 = 'Windows 10 Version 1607 (Anniversary Update)'
-        15063 = 'Windows 10 Version 1703 (Creators Update)'
-        16299 = 'Windows 10 Version 1709 (Fall Creators Update)'
-        17134 = 'Windows 10 Version 1803 (April 2018 Update)'
-        17763 = 'Windows 10 Version 1809 (October 2018 Update)'
-        18362 = 'Windows 10 Version 1903 (May 2019 Update)'
-        18363 = 'Windows 10 Version 1909 (November 2019 Update)'
-        19041 = 'Windows 10 Version 2004 (May 2020 Update)'
-        19042 = 'Windows 10 Version 20H2 (October 2020 Update)'
-        19043 = 'Windows 10 Version 21H1 (May 2021 Update)'
-        19044 = 'Windows 10 Version 21H2 (November 2021 Update)'
-        19045 = 'Windows 10 Version 22H2 (October 2022 Update)'
         # Windows 11
         22000 = 'Windows 11 Version 21H2 (October 2021 RTM)'
         22621 = 'Windows 11 Version 22H2 (September 2022 Update)'
@@ -177,7 +162,7 @@ Antivirus: $($antivirus.displayName)
 Installed Programs:
 $($programs | Format-Table | Out-String)
 "@
-    $sysInfo | Out-File "$logPath\SystemInfo.txt"
+    $sysInfo | Out-File "$logPath\SystemInfo_$timestamp.txt"
 }
 
 # Step 4: Start Traces
@@ -240,10 +225,12 @@ Write-Host "`n[Step 11] Verifying saved logs..."
 $expectedFiles = @()
 
 if ($doSystemInfo) {
-    $expectedFiles += "$logPath\\SystemInfo_$timestamp.txt"
-    $expectedFiles += "$logPath\\Application_$timestamp.evtx", "$logPath\\System_$timestamp.evtx", "$logPath\\Security_$timestamp.evtx"
+    $expectedFiles += Join-Path $logPath "SystemInfo_$timestamp.txt"
+    $expectedFiles += Join-Path $logPath "Application_$timestamp.evtx"
+    $expectedFiles += Join-Path $logPath "System_$timestamp.evtx"
+    $expectedFiles += Join-Path $logPath "Security_$timestamp.evtx"
     if ($doTraces) {
-        $expectedFiles += "$logPath\\Microsoft-Windows-CAPI2_Operational_$timestamp.evtx"
+        $expectedFiles += Join-Path $logPath "Microsoft-Windows-CAPI2_Operational_$timestamp.evtx"
     }
 }
 
@@ -254,12 +241,12 @@ if ($doTraces) {
             $expectedFiles += $file.FullName
         }
     }
-    $expectedFiles += "$traceFile"
+    $expectedFiles += $traceFile
 }
 
 $missing = @()
 foreach ($file in $expectedFiles) {
-    if ($file -and -not (Test-Path $file)) {
+    if (-not (Test-Path $file)) {
         $missing += $file
     }
 }
@@ -267,6 +254,7 @@ foreach ($file in $expectedFiles) {
 if ($missing.Count -eq 0) {
     Write-Output "`n✅ All logs and traces saved to $logPath"
 } else {
-    Write-Output "`n❌ Error: The following files were not saved successfully:"
+    Write-Output "`n❌ Error: The following files were not saved correctly:"
     $missing | ForEach-Object { Write-Output "- $_" }
 }
+
