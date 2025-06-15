@@ -5,7 +5,7 @@
 .DESCRIPTION
     This script collects network ETL trace, Windows event logs, performance monitor metrics,
     and other Windows Server information. It is designed to assist in diagnosing issues by
-    gathering relevant system and network data during a reproduction scenario.
+    gathering relevant system and network data, eventually during a reproduction scenario.
 
 .AUTHOR
     Alexis Touet
