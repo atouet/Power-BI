@@ -1,4 +1,4 @@
-# OPDG Troubleshooting Data Collector `v0.7`
+# OPDG - Environmental Troubleshooting Data Collector `v0.7`
 Interactive PowerShell script that gathers the most common windows diagnostics needed by support engineers in an automated way. 
 
 ---
@@ -17,7 +17,7 @@ All output is stored in a time-stamped directory:
 ---
 
 ## 🔧 Prerequisites
-* Windows Server 2016 and above
+* Windows Server 2019 and above
 * **Administrator** rights (script checks and exits if not elevated)  
 * PowerShell 5.x or newer (comes with Windows)  
 
@@ -32,7 +32,7 @@ All output is stored in a time-stamped directory:
 
 You will see a banner similar to:
 
-    Windows Troubleshooting Data Collector  v0.7
+    OPDG - Environmental Troubleshooting Data Collector v0.7
     ─────────────────────────────────────────────────────────
     ▪ Scenario 1 – System info + core event logs
     ▪ Scenario 2 – Live network ETL trace + PerfMon
@@ -90,7 +90,7 @@ Counter set sampled every **5 seconds**:
 * `\PhysicalDisk(_Total)\% Idle Time`  
 * `\PhysicalDisk(_Total)\Current Disk Queue Length`  
 
-Great for correlating CPU/disk spikes with packets in the ETL trace.
+Great for correlating CPU/RAM/disk spikes with packets in the ETL trace.
 
 ---
 
