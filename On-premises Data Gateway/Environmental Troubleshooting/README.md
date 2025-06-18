@@ -18,7 +18,7 @@ All output is stored in a time-stamped directory:
 
 ## 🔧 Prerequisites
 * Windows Server 2019 and above
-* **Administrator** rights (script checks and exits if not elevated)  
+* **Administrator rights** (script checks and exits if not elevated)  
 * PowerShell 5.x or newer (comes with Windows)  
 
 ---
