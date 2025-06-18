@@ -1,5 +1,5 @@
-c# Windows Troubleshooting Data Collector `v0.7`
-Interactive PowerShell script that gathers the most common diagnostics needed by support engineers—without hunting through MMC snap-ins or registry hives yourself.
+# OPDG Troubleshooting Data Collector `v0.7`
+Interactive PowerShell script that gathers the most common windows diagnostics needed by support engineers in an automated way. 
 
 ---
 
