@@ -1,4 +1,4 @@
-# Windows Troubleshooting Data Collector `v0.7`
+c# Windows Troubleshooting Data Collector `v0.7`
 Interactive PowerShell script that gathers the most common diagnostics needed by support engineers—without hunting through MMC snap-ins or registry hives yourself.
 
 ---
@@ -7,8 +7,8 @@ Interactive PowerShell script that gathers the most common diagnostics needed by
 | Scenario | Collects | Typical Use-case |
 |----------|----------|------------------|
 | **1 – Logs only** | `SystemInfo.txt` &nbsp;+ Windows **Application / System / Security** event logs (past 7 days) | General health check; offline log review |
-| **2 – Live traces** | High-level **network ETL** (`.etl`) &nbsp;+ lightweight **PerfMon** (`.blg`) while you reproduce an issue | Intermittent connectivity, latency, SSL/TLS failures |
-| **3 – Full capture** | Everything from Scenario&nbsp;2 **plus** CAPI2/Operational log and all files from Scenario&nbsp;1 | Certificate or crypto problems, complex deployments |
+| **2 – Live traces** | High-level **network ETL** (`.etl`) &nbsp;+ lightweight **PerfMon** (`.blg`) while you reproduce an issue | Connectivity issues, performance issues |
+| **3 – Full capture** | Everything from Scenario&nbsp;2 **plus** CAPI2/Operational log and all files from Scenario&nbsp;1 | complex scenarios, connectivity issues including SSL/TLS failures, performance issues, general server information) |
 
 All output is stored in a time-stamped directory:
 
@@ -17,7 +17,7 @@ All output is stored in a time-stamped directory:
 ---
 
 ## 🔧 Prerequisites
-* Windows 10/11 or Server 2016+  
+* Windows Server 2016 and above
 * **Administrator** rights (script checks and exits if not elevated)  
 * PowerShell 5.x or newer (comes with Windows)  
 
