@@ -25,12 +25,9 @@ All output is stored in a time-stamped directory:
 
 ## 🚀 Quick Start
 
-    # 1. Clone the repo
-    git clone https://github.com/<org>/<repo>.git
-    cd <repo>
 
-    # 2. Start an elevated PowerShell console
-    # 3. Run the script
+    # 1. Start an elevated PowerShell console
+    # 2. Run the script
     .\Collect-WinDiagnostics.ps1
 
 You will see a banner similar to:
