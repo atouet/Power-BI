@@ -28,7 +28,7 @@ All output is stored in a time-stamped directory:
 
     # 1. Start an elevated PowerShell console
     # 2. Run the script
-    .\Collect-WinDiagnostics.ps1
+    .\OPDG - Environmental Troubleshooting Data Collector.ps1
 
 You will see a banner similar to:
 
