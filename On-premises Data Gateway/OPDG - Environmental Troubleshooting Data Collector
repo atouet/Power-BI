@@ -48,7 +48,7 @@ function Show-ScriptSummary {
     param()
 
     Write-Host ""
-    Write-Host " Windows Troubleshooting Data Collector  v0.7" -ForegroundColor Cyan
+    Write-Host " OPDG - Environmental Troubleshooting Data Collector v0.7" -ForegroundColor Cyan
     Write-Host "───────────────────────────────────────────────────────────────"
     Write-Host "▪ Scenario 1  –  System info + Application / System / Security" `
                "logs from the last 7 days."
