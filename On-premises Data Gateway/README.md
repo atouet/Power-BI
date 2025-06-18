@@ -81,4 +81,18 @@ Open with **Wireshark** (`etl` import), **Microsoft Message Analyzer** (retired)
 
 ---
 
-### 4. Performance Monitor (`Perfmon_<tim_
+### 4. Performance Monitor (`Perfmon_<timestamp>.blg`)
+Counter set sampled every **5 seconds**:
+
+* `\Processor(_Total)\% Processor Time`  
+* `\Memory\Available MBytes`  
+* `\Memory\Committed Bytes`  
+* `\PhysicalDisk(_Total)\% Idle Time`  
+* `\PhysicalDisk(_Total)\Current Disk Queue Length`  
+
+Great for correlating CPU/disk spikes with packets in the ETL trace.
+
+---
+
+## 📏 Expected Folder Layout & Sizes
+
