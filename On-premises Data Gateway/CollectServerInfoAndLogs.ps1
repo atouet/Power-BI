@@ -1,18 +1,70 @@
 <#
-.SYNOPSIS
-    Collect environmental information useful for troubleshooting.
-
 .DESCRIPTION
-    This script collects network ETL trace, Windows event logs, performance monitor metrics,
-    and other Windows Server information. It is designed to assist in diagnosing issues by
-    gathering relevant system and network data, eventually during a reproduction scenario.
+    Interactive Windows troubleshooting helper that saves all collected data
+    into a time-stamped folder of your choice.
+
+    ── What does it collect?
+      • System information snapshot (.txt)
+      • Windows event logs (.evtx)
+      • Network ETL trace (.etl)
+      • Performance Monitor log (.blg)
+
+    ── How does it work?
+      At launch you pick one of three scenarios:
+
+        ▸ Scenario 1 – System info and Event Logs only  
+          Collects system-info plus windows Application, System and Security logs
+          from the last seven days.  (No tracing.)
+
+        ▸ Scenario 2 – Traces only  
+          Starts a high-level network ETL trace together with lightweight
+          PerfMon counters while you reproduce the issue, then stops and saves
+          the trace.  (No windows event logs or system-info export.)
+
+        ▸ Scenario 3 – Traces + Event Logs (including CAPI2 Log)  
+          Enables the CAPI2 windows event log, runs the same trace and
+          PerfMon session as Scenario 2, then additionally exports all items
+          from Scenario 1 once tracing stops.  This is the most extended
+          capture.
+
+      All output is written to “MSTraces_<yyyyMMdd-HHmmss>” under the base
+      folder you specify.
+
+.SYNOPSIS
+    Collect Windows diagnostics for one of three scenarios:
+      1) System info and Event Logs only, 2) live traces, or 3) combined live traces + Event logs(including CAPI2 Log).
 
 .AUTHOR
     Alexis Touet
 
 .VERSION
-    v0.3
+    v0.7
 #>
+
+###########################################################################
+# Quick-start summary                                                      #
+###########################################################################
+function Show-ScriptSummary {
+    param()
+
+    Write-Host ""
+    Write-Host " Windows Troubleshooting Data Collector  v0.7" -ForegroundColor Cyan
+    Write-Host "───────────────────────────────────────────────────────────────"
+    Write-Host "▪ Scenario 1  –  System info + Application / System / Security" `
+               "logs from the last 7 days."
+    Write-Host "▪ Scenario 2  –  Live network ETL trace + lightweight PerfMon."
+    Write-Host "▪ Scenario 3  –  Scenario 2 trace PLUS CAPI2 log and all items" `
+               "from Scenario 1 (full capture)."
+    Write-Host ""
+    Write-Host "All output is saved to a time-stamped sub-folder called" `
+               "'MSTraces_<yyyyMMdd-HHmmss>' under the base path you choose."
+    Write-Host "───────────────────────────────────────────────────────────────"
+    Write-Host ""
+}
+
+# Show the banner right away
+Show-ScriptSummary
+
 
 # Step 0: Check for Administrator Privileges
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -20,63 +72,65 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit
 }
 
-# Step 1: Prompt for user selection
+# Step 1: Prompt for user selection (Three Scenarios)
 Write-Host "`nPlease select what option you would like to perform:"
-Write-Host "1. Collect system info and Windows event logs"
-Write-Host "2. Start network and performance traces, and collect only these traces"
-Write-Host "3. Both options 1 and 2"
+Write-Host "1. Scenario 1: Collect system info and Windows event logs"
+Write-Host "2. Scenario 2: Collect network trace and performance monitor whilst reproducing an issue"
+Write-Host "3. Scenario 3: Collect network trace + CAPI2 log + performance monitor whilst reproducing an issue, then collect Windows event logs and system info"
 $selection = Read-Host "Enter your choice (1, 2, or 3)"
 
 $doSystemInfo = $false
-$doTraces = $false
+$doTraceOnly = $false
+$doTraceAndLogs = $false
 
 switch ($selection.ToLower()) {
     "1" { $doSystemInfo = $true }
-    "2" { $doTraces = $true }
-    "3" { $doSystemInfo = $true; $doTraces = $true }
+    "2" { $doTraceOnly = $true }
+    "3" { $doTraceAndLogs = $true }
     default {
         Write-Host "Invalid selection. Exiting." -ForegroundColor Red
         exit
     }
 }
 
-# Ask how many days of event logs to collect (only if system info is selected)
-$logDays = 1
-if ($doSystemInfo) {
-    do {
-        $logDaysInput = Read-Host "How many days of Windows event logs would you like to collect?"
-        if ($logDaysInput -match '^[0-9]+$') {
-            $logDays = [int]$logDaysInput
-        } else {
-            Write-Host "Please enter a valid number of days (e.g., 1, 3, 7)." -ForegroundColor Yellow
+# Step 2: Ask user where to save logs (mandatory input)
+Write-Host "`n[Step 2] Please specify the base folder where logs should be saved."
+Write-Host "Example: C:\Temp\Traces"
+
+do {
+    $basePath = Read-Host "Enter the base folder path"
+    if ([string]::IsNullOrWhiteSpace($basePath)) {
+        Write-Host "❌ Path cannot be empty. Please enter a valid folder path." -ForegroundColor Red
+        $basePath = $null
+        continue
+    }
+
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $logPath = Join-Path $basePath "MSTraces_$timestamp"
+
+    try {
+        if (-not (Test-Path $logPath)) {
+            Write-Host "Creating directory: $logPath"
+            New-Item -Path $logPath -ItemType Directory -Force | Out-Null
         }
-    } while ($logDaysInput -notmatch '^[0-9]+$')
-}
+        Write-Host "✅ Logs will be saved to: $logPath" -ForegroundColor Green
+    } catch {
+        Write-Host "❌ Failed to create or access the directory: $_" -ForegroundColor Red
+        $logPath = $null
+    }
+} while (-not $logPath)
 
-# Step 2: Create MSTraces_<timestamp> folder on a non-C drive if available
-Write-Host "`n[Step 2] Creating MSTraces folder..."
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$drives = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 }
-$logDrive = $drives | Where-Object { $_.Name -ne "C" } | Select-Object -First 1
-if (-not $logDrive) {
-    $logDrive = $drives | Where-Object { $_.Name -eq "C" } | Select-Object -First 1
-}
-$logPath = "$($logDrive.Name):\MSTraces_$timestamp"
-New-Item -Path $logPath -ItemType Directory -Force | Out-Null
-
-# Step 3: Collect System Information
+# Step 3: Scenario 1 - System Info and Event Logs
 if ($doSystemInfo) {
+    $logDays = 7
     Write-Host "`n[Step 3] Collecting system information..."
     $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.PrefixOrigin -ne "WellKnown" } | Select-Object -First 1).IPAddress
     $cpuCores = (Get-WmiObject Win32_Processor).NumberOfCores
     $vCores = (Get-WmiObject Win32_Processor).NumberOfLogicalProcessors
     $ram = [math]::Round((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)
-
     $webproxy = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyServer
     $proxyEnabled = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyEnable
     $winhttpProxy = netsh winhttp show proxy | Out-String
-
-    # Windows version and build
     $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
     try {
         $reg = Get-ItemProperty -Path $regPath -ErrorAction Stop
@@ -96,29 +150,7 @@ if ($doSystemInfo) {
     [int]$major = $versionObj.Major
     [int]$minor = $versionObj.Minor
     $fullBuild = "$major.$minor.$buildMajor.$buildRevision"
-    $buildMap = @{
-        # Windows 11
-        22000 = 'Windows 11 Version 21H2 (October 2021 RTM)'
-        22621 = 'Windows 11 Version 22H2 (September 2022 Update)'
-        22631 = 'Windows 11 Version 23H2 (October 2023 Update)'
-        26100 = 'Windows 11 Version 24H2 (October 2024 Update)'
-        # Windows Server
-        7601  = 'Windows Server 2008 R2 SP1'
-        9200  = 'Windows Server 2012'
-        9600  = 'Windows Server 2012 R2'
-        14393 = 'Windows Server 2016'
-        17763 = 'Windows Server 2019'
-        20348 = 'Windows Server 2022'
-        25398 = 'Windows Server 2025 (Preview)'
-    }
-
-    if ($buildMap.ContainsKey($buildMajor)) {
-        $winName = $buildMap[$buildMajor]
-    } else {
-        $winName = "Unknown build ($buildMajor)"
-    }
-
-    # .NET version
+    $winName = "Build $buildMajor"
     $dotnet = $null
     try {
         $reg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" -Name InstallPath,Release -ErrorAction Stop
@@ -139,11 +171,9 @@ if ($doSystemInfo) {
     } catch {
         $dotnet = "Not found"
     }
-
     $firewall = netsh advfirewall show allprofiles | Out-String
     $programs = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion | Where-Object { $_.DisplayName }
     $antivirus = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntivirusProduct | Select-Object displayName
-
     $sysInfo = @"
 IP Address: $ip
 CPU Cores: $cpuCores
@@ -165,96 +195,106 @@ $($programs | Format-Table | Out-String)
     $sysInfo | Out-File "$logPath\SystemInfo_$timestamp.txt"
 }
 
-# Step 4: Start Traces
-if ($doTraces) {
-    Write-Host "`n[Step 4] Enabling CAPI2 event log..."
-    wevtutil sl Microsoft-Windows-CAPI2/Operational /e:true
-
-    Write-Host "`n[Step 5] Starting performance monitor..."
+# Step 4: Scenario 2 and 3 - Tracing
+if ($doTraceOnly -or $doTraceAndLogs) {
     $perfmonName = "Perfmon_$timestamp"
     $perfLog = "$logPath\$perfmonName.blg"
+    $traceFile = "$logPath\Trace_$env:COMPUTERNAME_$timestamp.etl"
+
+    if ($doTraceAndLogs) {
+        Write-Host "`n[Step 4] Enabling CAPI2 event log..."
+        wevtutil sl Microsoft-Windows-CAPI2/Operational /e:true
+    }
+
+    do {
+        $startInput = Read-Host "Type 'start' when you're ready to begin tracing"
+    } while ($startInput.ToLower() -ne "start")
+
     if (logman query $perfmonName -ets > $null 2>&1) {
         logman delete $perfmonName -ets
     }
     logman create counter $perfmonName `
-      -counters "\Processor(_Total)\% Processor Time" `
-                "\Memory\Available MBytes" `
-                "\Memory\Committed Bytes" `
-                "\PhysicalDisk(_Total)\% Idle Time" `
-                "\PhysicalDisk(_Total)\Current Disk Queue Length" `
-      -f bin -o "$perfLog" -si 00:00:05
+        -counters "\Processor(_Total)\% Processor Time" `
+                  "\Memory\Available MBytes" `
+                  "\Memory\Committed Bytes" `
+                  "\PhysicalDisk(_Total)\% Idle Time" `
+                  "\PhysicalDisk(_Total)\Current Disk Queue Length" `
+        -f bin -o "$perfLog" -si 00:00:05
     logman start $perfmonName
 
-    Write-Host "`n[Step 6] Starting network trace..."
-    $traceFile = "$logPath\Trace_$env:COMPUTERNAME_$timestamp.etl"
-    netsh trace start scenario=netconnection,internetclient capture=yes report=yes overwrite=yes maxsize=4096 tracefile="$traceFile" provider="Microsoft-Windows-NDIS" keywords=0xffffffffffffffff level=0xff provider="Microsoft-Windows-TCPIP" keywords=0x80007fff000000ff level=0x5 provider="{EB004A05-9B1A-11D4-9123-0050047759BC}" keywords=0x3ffff level=0x5 provider="Microsoft-Windows-Winsock-AFD" keywords=0x800000000000003f level=0x5 provider="{B40AEF77-892A-46F9-9109-438E399BB894}" keywords=0xffffffffffffffff level=0xff
+    netsh trace start scenario=netconnection,internetclient capture=yes overwrite=yes maxsize=4096 filemode=circular tracefile="$traceFile" `
+        provider="Microsoft-Windows-NDIS" keywords=0xffffffffffffffff level=0xff `
+        provider="Microsoft-Windows-TCPIP" keywords=0x80007fff000000ff level=0x5 `
+        provider="{EB004A05-9B1A-11D4-9123-0050047759BC}" keywords=0x3ffff level=0x5 `
+        provider="Microsoft-Windows-Winsock-AFD" keywords=0x800000000000003f level=0x5 `
+        provider="{B40AEF77-892A-46F9-9109-438E399BB894}" keywords=0xffffffffffffffff level=0xff
 
-    Write-Host "`n[Step 7] Monitoring in progress. Type 'stop' to end monitoring..."
     do {
-        $input = Read-Host "Type 'stop' to end monitoring"
-    } while ($input -ne "stop")
+        $stopInput = Read-Host "Type 'stop' when you're done reproducing the issue"
+    } while ($stopInput.ToLower() -ne "stop")
 
-    Write-Host "Stopping monitoring... Please wait while logs are being collected."
-
-    Write-Host "`n[Step 8] Stopping traces..."
+    Write-Host "`nStopping Perfmon and ETL trace..."
     logman stop $perfmonName
     netsh trace stop
 
-    Write-Host "`n[Step 9] Disabling CAPI2 event log..."
-    wevtutil sl Microsoft-Windows-CAPI2/Operational /e:false
+    if ($doTraceAndLogs) {
+        Write-Host "`nDisabling CAPI2 event log..."
+        wevtutil sl Microsoft-Windows-CAPI2/Operational /e:false
+    }
+
+    Write-Host "`n✅ Tracing complete. Logs saved to: $logPath" -ForegroundColor Green
 }
 
 # Step 5: Export Windows Event Logs
-if ($doSystemInfo) {
-    Write-Host "`n[Step 10] Exporting Windows event logs..."
+if ($doSystemInfo -or $doTraceAndLogs) {
+    Write-Host "`n[Step 5] Exporting Windows event logs..."
     $logs = @("Application", "System", "Security")
-    if ($doTraces) {
+    if ($doTraceAndLogs) {
         $logs += "Microsoft-Windows-CAPI2/Operational"
     }
+    $logDays = 7
     $timeFilter = $logDays * 86400000
     foreach ($log in $logs) {
         $safeName = $log -replace '[\\/]', '_'
-        $logFile = "$logPath\\${safeName}_$timestamp.evtx"
+        $logFile = "$logPath\${safeName}_$timestamp.evtx"
         if (Test-Path $logFile) { Remove-Item $logFile -Force }
         wevtutil epl $log "$logFile" /q:"*[System[TimeCreated[timediff(@SystemTime) <= $timeFilter]]]"
     }
 }
 
 # Step 6: Final Check
-Write-Host "`n[Step 11] Verifying saved logs..."
+Write-Host "`n[Step 6] Verifying saved logs..."
 $expectedFiles = @()
-
 if ($doSystemInfo) {
     $expectedFiles += Join-Path $logPath "SystemInfo_$timestamp.txt"
     $expectedFiles += Join-Path $logPath "Application_$timestamp.evtx"
     $expectedFiles += Join-Path $logPath "System_$timestamp.evtx"
     $expectedFiles += Join-Path $logPath "Security_$timestamp.evtx"
-    if ($doTraces) {
-        $expectedFiles += Join-Path $logPath "Microsoft-Windows-CAPI2_Operational_$timestamp.evtx"
-    }
 }
-
-if ($doTraces) {
-    $perfmonFiles = Get-ChildItem -Path $logPath -Filter "$perfmonName*.blg"
-    foreach ($file in $perfmonFiles) {
-        if ($file -ne $null) {
-            $expectedFiles += $file.FullName
-        }
-    }
+if ($doTraceAndLogs) {
+    $expectedFiles += Join-Path $logPath "Microsoft-Windows-CAPI2_Operational_$timestamp.evtx"
     $expectedFiles += $traceFile
+    $expectedFiles += $perfLog
+}
+if ($doTraceOnly) {
+    $expectedFiles += $traceFile
+    $expectedFiles += $perfLog
 }
 
 $missing = @()
 foreach ($file in $expectedFiles) {
-    if (-not (Test-Path $file)) {
+    $folder = Split-Path $file
+    $pattern = [System.IO.Path]::GetFileNameWithoutExtension($file)
+    $extension = [System.IO.Path]::GetExtension($file)
+    $match = Get-ChildItem -Path $folder -Filter "*$pattern*$extension" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $match) {
         $missing += $file
     }
 }
 
 if ($missing.Count -eq 0) {
-    Write-Output "`n✅ All logs and traces saved to $logPath"
+    Write-Host "`n✅ ALL LOGS AND TRACES SAVED TO: $logPath" -ForegroundColor Green
 } else {
-    Write-Output "`n❌ Error: The following files were not saved correctly:"
-    $missing | ForEach-Object { Write-Output "- $_" }
+    Write-Host "`n❌ ERROR: The following files were not saved correctly:" -ForegroundColor Red
+    $missing | ForEach-Object { Write-Host "- $_" -ForegroundColor Red }
 }
-
