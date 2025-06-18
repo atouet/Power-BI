@@ -96,3 +96,55 @@ Great for correlating CPU/RAM/disk spikes with packets in the ETL trace.
 
 ## 📏 Expected Folder Layout & Sizes
 
+```
+MSTraces_20250618-093245\
+├─ SystemInfo_20250618-093245.txt            ~  5–20 KB
+├─ Application_20250618-093245.evtx          ~  1–50 MB
+├─ System_20250618-093245.evtx               ~  1–50 MB
+├─ Security_20250618-093245.evtx             ~  1–10 MB
+├─ Microsoft-Windows-CAPI2_Operational_...   (scenario 3 only)
+├─ Trace_HOST123_20250618-093245.etl         up to 4 GB (circular)
+└─ Perfmon_20250618-093245.blg               ~  2–50 MB
+```
+
+*Logs compress well*—zip/7-zip before uploading to reduce footprint.
+
+---
+
+## 🐛 Troubleshooting & FAQ
+
+<details>
+<summary><strong>“Script says ‘Please run as Administrator’ even though I am admin.”</strong></summary>
+
+Launch PowerShell with **Run as administrator** (title bar shows *Administrator:*).  
+Having admin rights in AD does not automatically elevate your shell.
+</details>
+
+<details>
+<summary><strong>How do I view `.evtx` files on another machine?</strong></summary>
+
+Copy the file and open with **Event Viewer → Action → Open Saved Log…**.  
+No need to rename or import.
+</details>
+
+<details>
+<summary><strong>Can I increase the log retention beyond 7 days?</strong></summary>
+
+Yes—search for the variable **`$logDays`** in the script and adjust it.
+</details>
+
+<details>
+<summary><strong>Does the script collect any personal files?</strong></summary>
+
+No. It only queries system metadata, registry keys, and Windows logging APIs.  
+Nothing from user documents, browser history, etc. is touched.
+</details>
+
+---
+
+## 📜 License
+MIT – do whatever you want, **no warranty**.
+
+---
+
+> Maintained with ❤️ by **Alexis Touet**. 
