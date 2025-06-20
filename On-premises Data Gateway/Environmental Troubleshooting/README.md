@@ -2,11 +2,10 @@
 Interactive PowerShell script that gathers the most common windows diagnostics needed by support engineers in an automated way. 
 
 
-<h2 style="color:red;">⚠️ DISCLAIMER</h2>
+<h2 style="color:red;">⚠️ DISCLAIMER</h2 style="color:red;">
 
-<p><strong>This tool and its documentation are <em>not official Microsoft guidance</em>.  
-Please consult https://learn.microsoft.com/ for authoritative information.  
-Before running this script, review its contents carefully and ensure it aligns with your organization's internal policies.</strong></p>
+This tool and its documentation are not official Microsoft guidance. Please consult Microsoft Learn or other official Microsoft resources for authoritative information.  Before running this script, review its contents carefully and ensure it aligns with your organization's internal policies and security standards.
+
 
 ---
 
