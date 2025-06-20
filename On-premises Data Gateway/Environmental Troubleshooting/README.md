@@ -1,5 +1,5 @@
 # OPDG - Environmental Troubleshooting Data Collector `v0.7`
-Interactive PowerShell script that gathers the most common windows diagnostics needed by support engineers in an automated way. 
+Interactive PowerShell script that gathers the most common windows diagnostics needed to investigate/troubleshoot in an automated way. 
 
 
 <h2 style="color:red;">⚠️ DISCLAIMER</h2 style="color:red;">
